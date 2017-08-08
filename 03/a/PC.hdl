@@ -16,5 +16,6 @@ CHIP PC {
     OUT out[16];
 
     PARTS:
-    // Put your code here:
+    Mux
+    Mux16(a=, b=false, sel=reset, out=out);
 }
