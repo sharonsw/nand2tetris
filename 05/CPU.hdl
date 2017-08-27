@@ -39,5 +39,35 @@ CHIP CPU {
         pc[15];          // address of next instruction
 
     PARTS:
-    // Put your code here:
+    // Determine if A register will load address (A-instruction), or ALU Output (C-intruction)
+    Mux16(a=instruction, b=aluOut, sel=instruction[15], out=aOrCOut);
+
+    // Determine if selected value is loaded into A Register (A-instruction: always load; C-instruction: load when d1=1)
+    Mux4Way(a=true, b=true, c=false, d=true, sel[1]=instruction[15], sel[0]=instruction[5], out=loadARegister);
+    ARegister(in=aOrCOut, load=loadARegister, out=outA, out[0..14]=addressM);
+
+    // Select A or M to ALU y input
+    Mux16(a=outA, b=inM, sel=instruction[12], out=outAorM);
+    
+    // Determine if load ALU output into D Register
+    And(a=instruction[4], b=instruction[15], out=loadD);
+    DRegister(in=aluOut, load=loadD, out=outD);
+
+    // ALU
+    ALU(x=outD, y=outAorM, zx=instruction[11], nx=instruction[10], zy=instruction[9], ny=instruction[8], f=instruction[7], no=instruction[6], out=aluOut, out=outM, zr=aluZR, ng=aluNG);
+
+    // Determine if writeM = 1 for C instructions (write to Memory). Always set to 0 if A-instruction
+    And(a=instruction[15], b=instruction[3], out=writeM);
+
+    // Jump control
+    Nor(a=aluZR, b=aluNG, out=outNor);
+    Or(a=aluZR, b=outNor, out=inD);
+    Not(in=aluZR, out=inF);
+    Or(a=aluZR, b=aluNG, out=inG);    
+    Mux8Way(a=false, b=outNor, c=aluZR, d=inD, e=aluNG, f=inF, g=inG, h=true, sel[2]=instruction[2], sel[1]=instruction[1], sel[0]=instruction[0], out=jump);
+    And(a=instruction[15], b=jump, out=loadPC);
+    Not(in=loadPC, out=incIN);
+    PC(in=outA, load=loadPC, inc=incIN, reset=reset, out[0..14]=pc);
+
+
 }
